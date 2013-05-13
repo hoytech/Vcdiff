@@ -34,7 +34,9 @@ encode_string(source, target)
 
         open_vcdiff::VCDiffEncoder encoder(source_p, source_size);
 
-        encoder.Encode(target_p, target_size, &output_string);
+        if (!encoder.Encode(target_p, target_size, &output_string)) {
+          croak("open_vcdiff::VCDiffEncoder::Encode() returned false");
+        }
 
         RETVAL = newSVpv(output_string.c_str(), output_string.length());
 
@@ -61,7 +63,9 @@ decode_string(source, delta)
 
         open_vcdiff::VCDiffDecoder decoder;
 
-        decoder.Decode(source_p, source_size, delta_string, &output_string);
+        if (!decoder.Decode(source_p, source_size, delta_string, &output_string)) {
+          croak("open_vcdiff::VCDiffDecoder::Decode() returned false");
+        }
 
         RETVAL = newSVpv(output_string.c_str(), output_string.length());
 
