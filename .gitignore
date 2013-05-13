@@ -1,0 +1,11 @@
+README
+Makefile
+Makefile.old
+MYMETA.*
+blib/
+pm_to_blib
+MANIFEST.bak
+Vcdiff-*.tar.gz
+Vcdiff.bs
+Vcdiff.o
+Vcdiff.c

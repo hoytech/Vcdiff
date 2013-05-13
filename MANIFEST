@@ -1,0 +1,7 @@
+Changes
+lib/Vcdiff.pm
+Makefile.PL
+MANIFEST
+MANIFEST.SKIP
+t/all_strings.t
+Vcdiff.xs
