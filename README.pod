@@ -4,6 +4,8 @@ Vcdiff - diff and patch for binary data
 
 =head1 SYNOPSIS
 
+B<In order to use this module you must install one or more backend modules (see below).>
+
     use Vcdiff;
 
     my $delta = Vcdiff::diff($source, $target);
@@ -18,31 +20,62 @@ Vcdiff - diff and patch for binary data
 
 =head1 DESCRIPTION
 
-Given a source string and a target string, the C<Vcdiff::diff> function computes another string called a delta that encodes the information needed to turn source into target.
+Given source data and target data, the C<Vcdiff::diff> function computes a string called a delta that encodes the information needed to turn source into target.
 
 Anyone who has source and delta can compute target with the C<Vcdiff::patch> function.
 
-If the source and target inputs are related, delta can theoretically be very small relative to target, meaning it may be more efficient to send the delta string instead of the whole target.
+If the source and target inputs are related, delta can be very small relative to target, meaning it may be more efficient to send the delta string instead of the whole target.
 
-Even though source and target don't necessarily have to be binary data (regular data is fine too), the delta string will always contain binary data including NUL bytes so if your transport protocols don't support this you will have to encode or escape it in some way (ie Base64). Compressing the delta before you do this might be worthwhile depending on the size of your changes and the entropy of your data.
+Even though source and target don't necessarily have to be binary data (regular data is fine too), the delta will always contain binary data including NUL bytes so if your transport protocols don't support this you will have to encode or escape it in some way (ie Base64). Compressing the delta before you do this might be worthwhile depending on the size of your changes and the entropy of your data.
 
-This module uses a backend library to implement L<RFC 3284|http://www.faqs.org/rfcs/rfc3284.html>, "The VCDIFF Generic Differencing and Compression Data Format". Currently the only library supported is L<open-vcdiff|http://code.google.com/p/open-vcdiff/> but the thinking behind the L<Vcdiff> namespace is that it could become "the DBI" of VCDIFF implementations.
-
-
-=head1 OPEN-VCDIFF
-
-Currently this module always uses L<Alien::OpenVcdiff> which is a module that configures, builds, and installs Google's L<open-vcdiff|http://code.google.com/p/open-vcdiff/> library.
-
-The alien package installs the C<vcdiff> binary for your convenience but this module uses the C<libvcdenc.so> and C<libvcddec.so> shared libraries so that the diffing computation is done in-process and no processes are forked.
-
-Once I have finished the streaming API implementation I will also document some limitations and how to use memory mapped files from perl so as to mostly alleviate them. If I understand correctly, even with the streaming API C<open-vcdiff> has a hard upper-limit of 2G file sizes and the default (which this module hasn't changed) is 64M so be warned. 
+The delta format is described by L<RFC 3284|http://www.faqs.org/rfcs/rfc3284.html>, "The VCDIFF Generic Differencing and Compression Data Format".
 
 
-=head1 TODO
+=head1 STREAMING API
 
-Implement the streaming API and possibly the re-usable "hashed dictionary" API.
+The streaming API is sometimes more convenient than the in-memory API. It can also be more efficient since it uses less memory and you can start processing output before Vcdiff has finished. Sometimes you have to use the streaming API in order to handle files that are too large to fit into your virtual address space (though this isn't possible with all backends).
 
-Create an alien package for L<xdelta3|http://xdelta.org/> and a way to use that instead.
+In order to send output to a stream, a file handle should be passed in as the 3rd argument to C<diff> or C<patch>:
+
+    Vcdiff::diff("hello", "hello world", \*STDOUT);
+
+In order to fully take advantage of streaming, the source and target parameters of C<diff> and the source and delta parameters of C<patch> can be file handles instead of strings:
+
+    open(my $source_fh, '<', 'source.dat') || die;
+    open(my $target_fh, '<', 'target.dat') || die;
+    open(my $delta_fh, '>', 'delta.dat') || die;
+
+    Vcdiff::diff($source_fh, $target_fh, $delta_fh);
+
+Note that in some backends the source file handle must be backed by an C<lseek(2)>able file descriptor (ie a file, not a pipe or socket). Vcdiff will throw an exception if this isn't the case.
+
+
+
+=head1 BACKENDS
+
+L<Vcdiff> doesn't itself implement delta compression. Instead, it tries to provide a consistent interface to various open-source VCDIFF (RFC 3284) implementations. The implementation libraries it interfaces to are called "backends".
+
+In other words, L<Vcdiff> aims to be "the DBI" of VCDIFF implementations.
+
+The currently supported backends are described below. See the documentation of the backend modules for more details on the pros and cons of each backend.
+
+
+=head2 XDELTA3 BACKEND
+
+The L<Vcdiff::Xdelta3> backend module bundles Joshua MacDonald's L<Xdelta3|http://xdelta.org/> library.
+
+
+=head2 OPEN-VCDIFF BACKEND
+
+The L<Vcdiff::OpenVcdiff> backend module depends on L<Alien::OpenVcdiff> which configures, builds, and installs Google's L<open-vcdiff|http://code.google.com/p/open-vcdiff/> library.
+
+
+=head2 FUTURE BACKENDS
+
+Another possible candidate would be Kiem-Phong Vo's L<Vcodex|http://www2.research.att.com/~gsf/download/ref/vcodex/vcodex.html> library which contains a vcdiff implementation.
+
+Another really cool project would be a pure-perl VCDIFF implementation that could be used in environments that are unable to compile XS modules.
+
 
 
 =head1 SEE ALSO
@@ -51,13 +84,11 @@ L<Vcdiff github repo|https://github.com/hoytech/Vcdiff>
 
 L<RFC 3284|http://www.faqs.org/rfcs/rfc3284.html>, "The VCDIFF Generic Differencing and Compression Data Format"
 
-L<Alien::OpenVcdiff>
-
-L<open-vcdiff|http://code.google.com/p/open-vcdiff/>
 
 =head1 AUTHOR
 
 Doug Hoyte, C<< <doug@hcsw.org> >>
+
 
 =head1 COPYRIGHT & LICENSE
 
