@@ -142,7 +142,7 @@ In order to fully take advantage of streaming, the source and target parameters 
 
     Vcdiff::diff($source_fh, $target_fh, $delta_fh);
 
-Note that in some backends the source file handle must be backed by an C<lseek(2)>able file descriptor (ie a file, not a pipe or socket). Vcdiff will throw an exception if this isn't the case.
+Note that in some backends the source file handle must be backed by an C<lseek(2)>able file descriptor (in other words, a real file, not a pipe or socket). Vcdiff will throw an exception if this isn't the case.
 
 
 
@@ -170,6 +170,27 @@ The L<Vcdiff::OpenVcdiff> backend module depends on L<Alien::OpenVcdiff> which c
 Another possible candidate would be Kiem-Phong Vo's L<Vcodex|http://www2.research.att.com/~gsf/download/ref/vcodex/vcodex.html> library which contains a vcdiff implementation.
 
 Another really cool project would be a pure-perl VCDIFF implementation that could be used in environments that are unable to compile XS modules.
+
+
+=head2 CHOOSING A BACKEND
+
+In order to choose a backend to use, L<Vcdiff> will first check to see if the C<$Vcdiff::backend> variable is populated. If so, it will attempt to load that backend:
+
+    {
+        local $Vcdiff::backend = 'Vcdiff::OpenVcdiff';
+        $delta = Vcdiff::diff($source, $target);
+    }
+
+Otherwise, it will check to see if a backend has been loaded already. If so, it will choose the first one it finds:
+
+    use Vcdiff::Xdelta3;
+    $delta = Vcdiff::diff($source, $target);
+
+If no backends are loaded, it will try to load them in the following order: Xdelta3, OpenVcdiff. 
+
+Finally, if no backends can be loaded, an exception is thrown.
+
+
 
 
 
