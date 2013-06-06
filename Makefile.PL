@@ -3,32 +3,13 @@ use strict;
 use ExtUtils::MakeMaker;
 
 
-use Alien::OpenVcdiff;
- 
-my $openvcdiff = Alien::OpenVcdiff->new;
- 
-my $libs = $openvcdiff->libs;
-my $cflags = $openvcdiff->cflags;
-
-if ($cflags =~ m{^-I\S*google/?$}) {
-  $cflags .= '/../';
-} else {
-  die "Unexpected value from Alien::OpenVcdiff::cflags: $cflags";
-}
-
-
 my %args = (
-    NAME              => 'Vcdiff',
-    VERSION_FROM      => 'lib/Vcdiff.pm',
-    XSOPT             => '-C++',
-    CC                => 'g++',
-    CCFLAGS           => $cflags,
-    LIBS              => $libs,
+    NAME => 'Vcdiff',
+    VERSION_FROM => 'lib/Vcdiff.pm',
     PREREQ_PM => {
-      'Alien::OpenVcdiff' => 0,
+      'Symbol' => 0,
     },
-    OBJECT            => 'Vcdiff.o',
-    LICENSE           => 'perl',
+    LICENSE => 'perl',
     dist => {
       PREOP => 'perldoc -uT $(VERSION_FROM) > README.pod; pod2text README.pod > $(DISTVNAME)/README',
     },

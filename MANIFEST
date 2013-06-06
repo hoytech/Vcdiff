@@ -1,7 +1,7 @@
 Changes
 lib/Vcdiff.pm
+lib/Vcdiff/Test.pm
 Makefile.PL
 MANIFEST
 MANIFEST.SKIP
-t/all_strings.t
-Vcdiff.xs
+t/loads.t

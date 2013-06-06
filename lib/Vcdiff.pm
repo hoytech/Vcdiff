@@ -2,16 +2,83 @@ package Vcdiff;
 
 use strict;
 
-use Alien::OpenVcdiff;
+use Symbol;
 
 our $VERSION = '0.100';
-$VERSION = eval $VERSION;
 
-require DynaLoader;
-our @ISA = 'DynaLoader';
-__PACKAGE__->bootstrap($VERSION);
+
+our $backend;
+
+our @known_backends = qw(
+  Vcdiff::Xdelta3
+  Vcdiff::OpenVcdiff
+);
+
+## These packages should be skipped when looking for a backend
+## because they are internal to this distribution and share a
+## namespace.
+
+my @internal_packages = qw (
+  Test
+);
+
+
+
+sub diff {
+  load_backend();
+
+  {
+    no strict "refs";
+    return qualify("diff", $backend)->(@_);
+  }
+}
+
+sub patch {
+  load_backend();
+
+  {
+    no strict "refs";
+    return qualify("patch", $backend)->(@_);
+  }
+}
+
+
+sub load_backend {
+  ## If a backend is set, make sure it is loaded:
+
+  if (defined $backend) {
+    eval "require $backend";
+    die $@ if $@;
+    return;
+  }
+
+  ## If a backend has already been loaded but not set, set it:
+
+  foreach my $k (keys %INC) {
+    if ($k =~ m{^Vcdiff/([^.]+)}) {
+      my $pm = $1;
+      next if grep { $pm eq $_ } @internal_packages;
+      $backend = "Vcdiff::$pm";
+      return;
+    }
+  }
+
+  ## Try to find a suitable backend then load and set it:
+
+  foreach my $backend_candidate (@known_backends) {
+    eval "require $backend_candidate";
+
+    if (!$@) {
+      $backend = $backend_candidate;
+      return;
+    }
+  }
+
+  die "Unable to find any Vcdiff backend modules (see perldoc Vcdiff)";
+}
 
 1;
+
 
 
 __END__
@@ -85,16 +152,3 @@ Copyright 2013 Doug Hoyte.
 This module is licensed under the same terms as perl itself.
 
 =cut
-
-
-
-
-    $str = Vcdiff::diff($str, $str);
-    $str = Vcdiff::diff($str, $fd);
-    ?? Vcdiff::diff($str, $str, $fd);
-    ?? Vcdiff::diff($str, $fd, $fd);
-
-    $str = Vcdiff::patch($str, $str);
-    $str = Vcdiff::patch($str, $fd);
-    ?? Vcdiff::patch($str, $str, $fd);
-    ?? Vcdiff::patch($str, $fd, $fd);
