@@ -3,26 +3,90 @@ package Vcdiff::Test;
 use strict;
 
 use Vcdiff;
+use File::Temp qw/ tempfile /;
 
 require Test::More;
 
 
-sub test_str {
-  my ($source, $target) = @_;
+sub verify {
+  my ($source_arg, $target_arg, $output_arg) = @_;
 
-  my $delta = Vcdiff::diff($source, $target);
-  my $target2 = Vcdiff::patch($source, $delta);
+  my ($source, $target, $delta);
 
-  Test::More::is($target2, $target);
+  if (ref $source_arg) {
+    $source = tempfile();
+    $source->autoflush(1);
+    print $source $$source_arg;
+  } else {
+    $source = $source_arg;
+  }
+
+  if (ref $target_arg) {
+    $target = tempfile();
+    $target->autoflush(1);
+    print $target $$target_arg;
+  } else {
+    $target = $target_arg;
+  }
+
+  my ($target2, $target2_fh);
+
+  if ($output_arg) {
+    $delta = tempfile();
+    $delta->autoflush(1);
+    $target2_fh = tempfile();
+    $target2_fh->autoflush(1);
+
+    Vcdiff::diff($source, $target, $delta);
+    seek $source, 0, 0;
+    seek $delta, 0, 0;
+    Vcdiff::patch($source, $delta, $target2_fh);
+
+    seek $target2_fh, 0, 0;
+    {
+      local $/;
+      $target2 = <$target2_fh>;
+    }
+  } else {
+    $delta = Vcdiff::diff($source, $target);
+    $target2 = Vcdiff::patch($source, $delta);
+  }
+
+  if (ref $target_arg) {
+    Test::More::is($target2, $$target_arg);
+  } else {
+    Test::More::is($target2, $target);
+  }
 }
 
 
+my $testcases = [
+  ["abcdef", "abcdef"],
+  ["abcdef", "abcDef"],
+  ["abcdefghi"x100, "abcdefghi"x51 . "zzzzzzzzzzzzzzzz" . "abcdefghi"x50],
+  ["abcdefghi"x51 . "zzzzzzzzzzzzzzzz" . "abcdefghi"x50, "abcdefghi"x100, "abcdefghi"x51 . "zzzzzzzzzzzzzzzz" . "abcdefghi"x50],
+  ["\x00"x1000000, "\x01"x1000000],
+];
+
+
 sub in_mem {
-  test_str("abcdef", "abcdef");
-  test_str("abcdef", "abcDef");
-  test_str("abcdefghi"x100, "abcdefghi"x51 . "zzzzzzzzzzzzzzzz" . "abcdefghi"x50);
-  test_str("abcdefghi"x51 . "zzzzzzzzzzzzzzzz" . "abcdefghi"x50, "abcdefghi"x100, "abcdefghi"x51 . "zzzzzzzzzzzzzzzz" . "abcdefghi"x50);
-  test_str("\x00"x1000000, "\x01"x1000000);
+  foreach my $testcase (@$testcases) {
+    verify($testcase->[0], $testcase->[1]);
+  }
+}
+
+
+sub streaming {
+  foreach my $testcase (@$testcases) {
+    for my $i (1..(2**3)) {
+      my ($t1, $t2, $t3) = ($testcase->[0], $testcase->[1], undef);
+      $t1 = \$t1 if $i & 1;
+      $t2 = \$t2 if $i & 2;
+      $t3 = 1 if $i & 4;
+
+      verify($t1, $t2, $t3);
+    }
+  }
 }
 
 
