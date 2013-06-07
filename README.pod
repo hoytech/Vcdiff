@@ -4,7 +4,7 @@ Vcdiff - diff and patch for binary data
 
 =head1 SYNOPSIS
 
-B<In order to use this module you must install one or more backend modules (see below).>
+B<In order to use this module you must install one or more backend modules (see below)>
 
     use Vcdiff;
 
@@ -20,11 +20,11 @@ B<In order to use this module you must install one or more backend modules (see 
 
 =head1 DESCRIPTION
 
-Given source data and target data, the C<Vcdiff::diff> function computes a string called a delta that encodes the information needed to turn source into target.
+Given source data and target data, the C<Vcdiff::diff> function computes a "delta" that encodes the information needed to turn source into target.
 
 Anyone who has source and delta can compute target with the C<Vcdiff::patch> function.
 
-If the source and target inputs are related, delta can be very small relative to target, meaning it may be more efficient to send the delta string instead of the whole target.
+If the source and target inputs are related then delta can be very small relative to target, meaning it may be more efficient to send the delta string instead of the whole target.
 
 Even though source and target don't necessarily have to be binary data (regular data is fine too), the delta will always contain binary data including NUL bytes so if your transport protocols don't support this you will have to encode or escape it in some way (ie Base64). Compressing the delta before you do this might be worthwhile depending on the size of your changes and the entropy of your data.
 
@@ -33,7 +33,7 @@ The delta format is described by L<RFC 3284|http://www.faqs.org/rfcs/rfc3284.htm
 
 =head1 STREAMING API
 
-The streaming API is sometimes more convenient than the in-memory API. It can also be more efficient since it uses less memory and you can start processing output before Vcdiff has finished. Sometimes you have to use the streaming API in order to handle files that are too large to fit into your virtual address space (though this isn't possible with all backends).
+The streaming API is sometimes more convenient than the in-memory API. It can also be more efficient since it uses less memory. Also, you can start processing output before Vcdiff has finished. Sometimes you have to use the streaming API in order to handle files that are too large to fit into your virtual address space (though note that some backends have size limitations apart from this).
 
 In order to send output to a stream, a file handle should be passed in as the 3rd argument to C<diff> or C<patch>:
 
@@ -41,23 +41,44 @@ In order to send output to a stream, a file handle should be passed in as the 3r
 
 In order to fully take advantage of streaming, the source and target parameters of C<diff> and the source and delta parameters of C<patch> can be file handles instead of strings:
 
-    open(my $source_fh, '<', 'source.dat') || die;
-    open(my $target_fh, '<', 'target.dat') || die;
-    open(my $delta_fh, '>', 'delta.dat') || die;
+    open(my $source_fh, '<', 'source.dat') || die $!;
+    open(my $target_fh, '<', 'target.dat') || die $!;
+    open(my $delta_fh, '>', 'delta.dat') || die $!;
 
     Vcdiff::diff($source_fh, $target_fh, $delta_fh);
 
-Note that in some backends the source file handle must be backed by an C<lseek(2)>able file descriptor (in other words, a real file, not a pipe or socket). Vcdiff will throw an exception if this isn't the case.
+Note that in some backends the source file handle must be backed by an C<lseek(2)>able file descriptor (in other words, a real file, not a pipe or socket). Vcdiff will throw an exception otherwise.
+
+
+
+=head1 MEMORY MAPPED INPUTS
+
+If the source or target/delta data is in a file, an alternative to the streaming API is to map the files into memory with C<mmap(2)> and then pass the mappings in to C<diff>/C<patch> as strings.
+
+Doing so is more efficient than the streaming API for large files because fewer system calls are made and a kernel-space to user-space copy is avoided. As mentioned above, files that are too large to fit in your virtual address must be diffed with the streaming API (this is only an issue when diffing multi-gigabyte files on 32 bit systems).
+
+Here is an example using L<Sys::Mmap>:
+
+    use Sys::Mmap;
+
+    open(my $source_fh, '<', 'source.dat') || die $!;
+    open(my $target_fh, '<', 'target.dat') || die $!;
+    open(my $delta_fh, '>', 'delta.dat') || die $!;
+
+    mmap(my $source_str, 0, PROT_READ, MAP_SHARED, $source_fh) || die $!;
+    mmap(my $target_str, 0, PROT_READ, MAP_SHARED, $target_fh) || die $!;
+
+    Vcdiff::diff($source_str, $target_str, $delta_fh);
 
 
 
 =head1 BACKENDS
 
-L<Vcdiff> doesn't itself implement delta compression. Instead, it tries to provide a consistent interface to various open-source VCDIFF (RFC 3284) implementations. The implementation libraries it interfaces to are called "backends".
+L<Vcdiff> doesn't itself implement delta compression. Instead, it provides a consistent interface to various open-source VCDIFF (RFC 3284) implementations. The implementation libraries it interfaces to are called "backends".
 
 In other words, L<Vcdiff> aims to be "the DBI" of VCDIFF implementations.
 
-The currently supported backends are described below. See the documentation of the backend modules for more details on the pros and cons of each backend.
+The currently supported backends are described below. See the POD documentation in the backend module distributions for more details on the pros and cons of each backend.
 
 
 =head2 XDELTA3 BACKEND
@@ -74,26 +95,26 @@ The L<Vcdiff::OpenVcdiff> backend module depends on L<Alien::OpenVcdiff> which c
 
 Another possible candidate would be Kiem-Phong Vo's L<Vcodex|http://www2.research.att.com/~gsf/download/ref/vcodex/vcodex.html> library which contains a vcdiff implementation.
 
-Another really cool project would be a pure-perl VCDIFF implementation that could be used in environments that are unable to compile XS modules.
+A really cool project would be a pure-perl VCDIFF implementation that could be used in environments that are unable to compile XS modules.
 
 
 =head2 CHOOSING A BACKEND
 
-In order to choose a backend to use, L<Vcdiff> will first check to see if the C<$Vcdiff::backend> variable is populated. If so, it will attempt to load that backend:
+In order to choose which backend to use, L<Vcdiff> will first check to see if the C<$Vcdiff::backend> variable is populated. If so, it will attempt to load that backend. This variable can be used to force a particular backend:
 
     {
         local $Vcdiff::backend = 'Vcdiff::OpenVcdiff';
         $delta = Vcdiff::diff($source, $target);
     }
 
-Otherwise, it will check to see if a backend has been loaded already. If so, it will choose the first one it finds:
+Otherwise, L<Vcdiff> will check to see if any backends have been loaded already. If so, it will choose the first one it finds:
 
     use Vcdiff::Xdelta3;
     $delta = Vcdiff::diff($source, $target);
 
-If no backends are loaded, it will try to load them in the following order: Xdelta3, OpenVcdiff. 
+If it doesn't find any loaded backends, it will try to load them in the following order: Xdelta3, OpenVcdiff. 
 
-Finally, if no backends can be loaded, an exception is thrown.
+Finally, if none of these backends can be loaded, an exception is thrown.
 
 
 

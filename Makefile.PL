@@ -8,6 +8,7 @@ my %args = (
     VERSION_FROM => 'lib/Vcdiff.pm',
     PREREQ_PM => {
       'Symbol' => 0,
+      'Carp' => 0,
       'File::Temp' => 0, ## Just for the test suite
     },
     LICENSE => 'perl',
