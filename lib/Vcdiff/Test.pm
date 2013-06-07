@@ -38,8 +38,6 @@ sub verify {
     $target2_fh->autoflush(1);
 
     Vcdiff::diff($source, $target, $delta);
-    seek $source, 0, 0;
-    seek $delta, 0, 0;
     Vcdiff::patch($source, $delta, $target2_fh);
 
     seek $target2_fh, 0, 0;
