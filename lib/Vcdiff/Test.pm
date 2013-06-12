@@ -67,6 +67,8 @@ my $testcases = [
 ];
 
 
+## Some backends may only support an in memory API so this is split out into its own test routine
+
 sub in_mem {
   foreach my $testcase (@$testcases) {
     verify($testcase->[0], $testcase->[1]);
@@ -74,9 +76,10 @@ sub in_mem {
 }
 
 
+## Try every combination of streaming/in-memory, except for 0 which is the same as the in_mem tests.
+
 sub streaming {
   foreach my $testcase (@$testcases) {
-    ## Try every combination of streaming/in-memory, except for 0 which is the same as the in_mem tests.
     for my $i (1..7) {
       my ($t1, $t2, $t3) = ($testcase->[0], $testcase->[1], undef);
       $t1 = \$t1 if $i & 1;
