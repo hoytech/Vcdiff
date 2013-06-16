@@ -5,3 +5,4 @@ Makefile.PL
 MANIFEST
 MANIFEST.SKIP
 t/loads.t
+extra-tests/cross-compat.t
