@@ -38,6 +38,9 @@ our $testcases = [
 sub verify {
   my ($source_arg, $target_arg, $streaming_output, $test_name) = @_;
 
+  my $differ_backend_to_use = $ENV{VCDIFF_TEST_DIFFER_BACKEND} || $Vcdiff::backend;
+  my $patcher_backend_to_use = $ENV{VCDIFF_TEST_PATCHER_BACKEND} || $Vcdiff::backend;
+
   my ($source, $target, $delta);
 
   if (ref $source_arg) {
@@ -64,8 +67,15 @@ sub verify {
     $target2_fh = tempfile();
     $target2_fh->autoflush(1);
 
-    Vcdiff::diff($source, $target, $delta);
-    Vcdiff::patch($source, $delta, $target2_fh);
+    {
+      local $Vcdiff::backend = $differ_backend_to_use;
+      Vcdiff::diff($source, $target, $delta);
+    }
+
+    {
+      local $Vcdiff::backend = $patcher_backend_to_use;
+      Vcdiff::patch($source, $delta, $target2_fh);
+    }
 
     seek $target2_fh, 0, 0;
     {
@@ -73,8 +83,15 @@ sub verify {
       $target2 = <$target2_fh>;
     }
   } else {
-    $delta = Vcdiff::diff($source, $target);
-    $target2 = Vcdiff::patch($source, $delta);
+    {
+      local $Vcdiff::backend = $differ_backend_to_use;
+      $delta = Vcdiff::diff($source, $target);
+    }
+
+    {
+      local $Vcdiff::backend = $patcher_backend_to_use;
+      $target2 = Vcdiff::patch($source, $delta);
+    }
   }
 
   if (ref $target_arg) {
