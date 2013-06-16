@@ -79,12 +79,16 @@ sub in_mem {
 ## Try every combination of streaming/in-memory, except for 0 which is the same as the in_mem tests.
 
 sub streaming {
+  my $opt = shift;
+
   foreach my $testcase (@$testcases) {
     for my $i (1..7) {
       my ($t1, $t2, $t3) = ($testcase->[0], $testcase->[1], undef);
       $t1 = \$t1 if $i & 1;
       $t2 = \$t2 if $i & 2;
       $t3 = 1 if $i & 4;
+
+      next if $opt->{skip_streaming_source_tests} && ($i & 1);
 
       verify($t1, $t2, $t3);
     }
