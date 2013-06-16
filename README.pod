@@ -75,6 +75,8 @@ Another possible candidate would be Kiem-Phong Vo's L<Vcodex|http://www2.researc
 
 A really cool project would be a pure-perl VCDIFF implementation that could be used in environments that are unable to compile XS modules.
 
+In the future I plan to build a L<Vcdiff::DumbDiffer> module (name undecided) that will completely ignore the source and create a delta that embeds the entire target. Obviously this defeats the purpose of delta compression but will allow deltas to be generated really fast. This will be useful because protocols that frequently replace the entire content won't have to add a special case.
+
 
 
 
@@ -129,10 +131,58 @@ Here is an example using L<Sys::Mmap>:
     munmap($source_str);
     munmap($target_str);
 
+Note that the L<Vcdiff::OpenVcdiff> module does this under the hood if source is a file handle.
 
 
 
 
+=head1 TESTING
+
+The L<Vcdiff> distribution includes a test suite that is shared by all the backends. Backends contain stub test files that invoke L<Vcdiff::Test> functions.
+
+Each backend also bundles backend-specific tests that relate to exception handling.
+
+=head2 $Vcdiff::Test::testcases
+
+This is a reference to an array that contains testcases. Each testcase is an array of 3 values. The first is the source, the second the target, and the third a test description.
+
+Every time a test-case is verified, the source will be diffed with the target, the source will then be patched by the resulting delta, and the output compared to the original source.
+
+The tests currently verify a few basic cases up to a megabyte or so in length. I'd like to go through the respective backends' test-suites and copy any interesting corner cases so they can be re-applied to all other backends.
+
+
+
+=head2 Vcdiff::Test::streaming()
+
+The L<Vcdiff::Test::streaming()> test is somewhat mis-named. It loops through all test-cases described above and for each of them it tests every streaming/in-memory API combination. You will see this in the test output like so:
+
+    ok 1 - [SSM]
+    ok 2 - [MSM]
+    ok 3 - [SMM]
+    ok 4 - [MMM]
+    ok 5 - [SSS]
+    ok 6 - [MSS]
+    ok 7 - [SMS]
+    ok 8 - [MMS]
+    ...
+
+The S/M indicators show which API combination is being used in the order of source, target/delta, and output arguments. For example, C<SMS> means source is streamed in from a file, the target/delta is in memory, and the output is being streamed to a file.
+
+=head2 extra-tests/cross-compat.t
+
+The point of this test is to verify that the deltas produced by each backend are compatible will all other backends.
+
+For each combination of backend, the L<streaming()> tests above are applied
+
+This test isn't run by default because it needs to have all backends installed.
+
+
+
+=head1 BENCHMARKING
+
+=head2 Compression
+
+=head2 Performance
 
 
 
