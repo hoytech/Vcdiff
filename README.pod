@@ -58,18 +58,32 @@ If it doesn't find any loaded backends, it will try to load them in the followin
 Finally, if none of these backends can be loaded, an exception is thrown.
 
 
+=head2 Dependency Recommendations
 
-=head2 XDELTA3 BACKEND
+Unless you are relying on features supported only in a specific backend, it's recommended that code that uses L<Vcdiff> write backend-agnostic code, ie:
+
+    use Vcdiff;
+    print Vcdiff::diff("hello", "hello world");
+
+That way the selection of which backend to use is fully flexible.
+
+If you're writing a module that depends on L<Vcdiff>, you can pick a backend when creating your module's dependency list. This way a (sophisticated) user can force a different backend at install-time if the one you chose doesn't work.
+
+Even more importantly, writing backend-agnostic code allows users of your module to choose which backend to use by setting C<$Vcdiff::backend> (or localising as described above). Backend-agnostic code also permits the flexibility of using one backend for diffing and another for patching (again by localising C<$Vcdiff::backend> for specific operations).
+
+
+
+=head2 BACKEND: Xdelta3
 
 The L<Vcdiff::Xdelta3> backend module bundles Joshua MacDonald's L<Xdelta3|http://xdelta.org/> library.
 
 
-=head2 OPEN-VCDIFF BACKEND
+=head2 BACKEND: open-vcdiff
 
 The L<Vcdiff::OpenVcdiff> backend module depends on L<Alien::OpenVcdiff> which configures, builds, and installs Google's L<open-vcdiff|http://code.google.com/p/open-vcdiff/> library.
 
 
-=head2 FUTURE BACKENDS
+=head2 Future Backends
 
 Another possible candidate would be Kiem-Phong Vo's L<Vcodex|http://www2.research.att.com/~gsf/download/ref/vcodex/vcodex.html> library which contains a vcdiff implementation.
 
@@ -146,9 +160,9 @@ Each backend also bundles backend-specific tests that relate to exception handli
 
 This is a reference to an array that contains testcases. Each testcase is an array of 3 values. The first is the source, the second the target, and the third a test description.
 
-Every time a test-case is verified, the source will be diffed with the target, the source will then be patched by the resulting delta, and the output compared to the original source.
+Every time a test-case is verified, the source will be diffed with the target, the source will then be patched by the resulting delta, and the output compared to the source.
 
-The tests currently verify a few basic cases up to a megabyte or so in length. I'd like to go through the respective backends' test-suites and copy any interesting corner cases so they can be re-applied to all other backends.
+The tests currently verify a few basic cases up to a megabyte or so in length. I'd like to go through the various backend test-suites and copy any interesting corner cases so they can be re-applied to all other backends.
 
 
 
@@ -164,15 +178,14 @@ The L<Vcdiff::Test::streaming()> test is somewhat mis-named. It loops through al
     ok 6 - [MSS]
     ok 7 - [SMS]
     ok 8 - [MMS]
-    ...
 
 The S/M indicators show which API combination is being used in the order of source, target/delta, and output arguments. For example, C<SMS> means source is streamed in from a file, the target/delta is in memory, and the output is being streamed to a file.
 
 =head2 extra-tests/cross-compat.t
 
-The point of this test is to verify that the deltas produced by each backend are compatible will all other backends.
+The point of this test is to verify that the deltas produced by each backend are compatible will all other backends. For each combination of backend, all the L<streaming()> tests above are run.
 
-For each combination of backend, the L<streaming()> tests above are applied
+Note that currently no backend-specific extensions like checksums or interleaving are enabled.
 
 This test isn't run by default because it needs to have all backends installed.
 
