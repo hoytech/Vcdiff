@@ -35,9 +35,9 @@ The delta format is described by L<RFC 3284|http://www.faqs.org/rfcs/rfc3284.htm
 
 =head1 BACKENDS
 
-L<Vcdiff> doesn't itself implement delta compression. Instead, it provides a consistent interface to various open-source VCDIFF (RFC 3284) implementations. The implementation libraries it interfaces to are called "backends".
+L<Vcdiff> aims to be "the DBI" of VCDIFF implementations.
 
-In other words, L<Vcdiff> aims to be "the DBI" of VCDIFF implementations.
+L<Vcdiff> doesn't itself implement delta compression. Instead, it provides a consistent interface to various open-source VCDIFF (RFC 3284) implementations. The implementation libraries it interfaces to are called "backends". You must install at least one backend in order to use L<Vcdiff>.
 
 The currently supported backends are described below. See the POD documentation in the backend module distributions for more details on the pros and cons of each backend.
 
@@ -60,16 +60,21 @@ Finally, if none of these backends can be loaded, an exception is thrown.
 
 =head2 Dependency Recommendations
 
-Unless you are relying on features supported only in a specific backend, it's recommended that code that uses L<Vcdiff> write backend-agnostic code, ie:
+Unless you are relying on features supported only in a specific backend, it's recommended that code that uses L<Vcdiff> be backend-agnostic like this:
 
     use Vcdiff;
     print Vcdiff::diff("hello", "hello world");
 
-That way the selection of which backend to use is fully flexible.
+Instead of:
 
-If you're writing a module that depends on L<Vcdiff>, you can pick a backend when creating your module's dependency list. This way a (sophisticated) user can force a different backend at install-time if the one you chose doesn't work.
+    use Vcdiff::Xdelta3;
+    print Vcdiff::Xdelta3::diff("hello", "hello world");
 
-Even more importantly, writing backend-agnostic code allows users of your module to choose which backend to use by setting C<$Vcdiff::backend> (or localising as described above). Backend-agnostic code also permits the flexibility of using one backend for diffing and another for patching (again by localising C<$Vcdiff::backend> for specific operations).
+That way the selection of which backend to use is as flexible as possible.
+
+If you're writing a module that depends on L<Vcdiff>, pick a backend and add that backend's package (ie C<Vcdiff::Xdelta3>) to your module's dependency list. This way a (sophisticated) user can force a different backend at install-time if the one you chose doesn't work for whatever reason.
+
+Even more importantly, writing backend-agnostic code allows users of your module to choose which backend to use by setting C<$Vcdiff::backend> (or localising as described above). Backend-agnostic code also permits the flexibility of using one backend for diffing and another for patching (by localising C<$Vcdiff::backend> for specific operations).
 
 
 
@@ -89,7 +94,7 @@ Another possible candidate would be Kiem-Phong Vo's L<Vcodex|http://www2.researc
 
 A really cool project would be a pure-perl VCDIFF implementation that could be used in environments that are unable to compile XS modules.
 
-In the future I plan to build a L<Vcdiff::DumbDiffer> module (name undecided) that will completely ignore the source and create a delta that embeds the entire target. Obviously this defeats the purpose of delta compression but will allow deltas to be generated really fast. This will be useful because protocols that frequently replace the entire content won't have to add a special case.
+In the future I plan to build a L<Vcdiff::DumbDiffer> module (name undecided) that will completely ignore the source and create a delta that embeds the entire target. Obviously this defeats the purpose of delta compression but will allow deltas to be generated really fast. This will be useful because protocols that frequently replace the entire content won't need special cases.
 
 
 
@@ -101,7 +106,7 @@ In the future I plan to build a L<Vcdiff::DumbDiffer> module (name undecided) th
 
 The streaming API is sometimes more convenient than the in-memory API. It can also be more efficient since it uses less memory. Also, you can start processing output before Vcdiff has finished.
 
-Sometimes you have to use the streaming API in order to handle files that are too large to fit into your virtual address space (though note that some backends have size limitations apart from this).
+Sometimes you have to use the streaming API in order to handle files that are too large to fit into your virtual address space (though note some backends have size limitations apart from this).
 
 In order to send output to a stream, a file handle should be passed in as the 3rd argument to C<diff> or C<patch>:
 
@@ -125,7 +130,7 @@ Note that in all current backends the source file handle must be backed by an C<
 
 If the source or target/delta data is in a file, an alternative to the streaming API is to map the files into memory with C<mmap(2)> and then pass the mappings in to C<diff>/C<patch> as strings.
 
-Doing so is more efficient than the streaming API for large files because fewer system calls are made and a kernel-space to user-space copy is avoided. As mentioned above, files that are too large to fit in your virtual address must be diffed with the streaming API (this is only an issue when diffing multi-gigabyte files on 32 bit systems).
+Doing so is more efficient than the streaming API for large files because fewer system calls are made and a kernel-space to user-space copy is avoided. However, as mentioned above, files that are too large to fit in your virtual address must be diffed with the streaming API (this is only an issue when diffing multi-gigabyte files on 32 bit systems).
 
 Here is an example using L<Sys::Mmap>:
 
@@ -142,8 +147,8 @@ Here is an example using L<Sys::Mmap>:
 
     Vcdiff::diff($source_str, $target_str, $delta_fh);
 
-    munmap($source_str);
-    munmap($target_str);
+    munmap($source_str); ## resource leak if diff() throws exception
+    munmap($target_str); ## ditto
 
 Note that the L<Vcdiff::OpenVcdiff> module does this under the hood if source is a file handle.
 
@@ -160,7 +165,7 @@ Each backend also bundles backend-specific tests that relate to exception handli
 
 This is a reference to an array that contains testcases. Each testcase is an array of 3 values. The first is the source, the second the target, and the third a test description.
 
-Every time a test-case is verified, the source will be diffed with the target, the source will then be patched by the resulting delta, and the output compared to the source.
+Every time a test-case is verified, source will be diffed with target, source will then be patched with the delta and the output compared with source.
 
 The tests currently verify a few basic cases up to a megabyte or so in length. I'd like to go through the various backend test-suites and copy any interesting corner cases so they can be re-applied to all other backends.
 
