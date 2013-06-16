@@ -127,6 +127,56 @@ Even though source and target don't necessarily have to be binary data (regular 
 The delta format is described by L<RFC 3284|http://www.faqs.org/rfcs/rfc3284.html>, "The VCDIFF Generic Differencing and Compression Data Format".
 
 
+
+
+=head1 BACKENDS
+
+L<Vcdiff> doesn't itself implement delta compression. Instead, it provides a consistent interface to various open-source VCDIFF (RFC 3284) implementations. The implementation libraries it interfaces to are called "backends".
+
+In other words, L<Vcdiff> aims to be "the DBI" of VCDIFF implementations.
+
+The currently supported backends are described below. See the POD documentation in the backend module distributions for more details on the pros and cons of each backend.
+
+In order to choose which backend to use, L<Vcdiff> will first check to see if the C<$Vcdiff::backend> variable is populated. If so, it will attempt to load that backend. This variable can be used to force a particular backend:
+
+    {
+        local $Vcdiff::backend = 'Vcdiff::OpenVcdiff';
+        $delta = Vcdiff::diff($source, $target);
+    }
+
+Otherwise, L<Vcdiff> will check to see if any backends have been loaded already. If so, it will choose the first one it finds:
+
+    use Vcdiff::Xdelta3;
+    $delta = Vcdiff::diff($source, $target);
+
+If it doesn't find any loaded backends, it will try to load them in the following order: Xdelta3, OpenVcdiff. 
+
+Finally, if none of these backends can be loaded, an exception is thrown.
+
+
+
+=head2 XDELTA3 BACKEND
+
+The L<Vcdiff::Xdelta3> backend module bundles Joshua MacDonald's L<Xdelta3|http://xdelta.org/> library.
+
+
+=head2 OPEN-VCDIFF BACKEND
+
+The L<Vcdiff::OpenVcdiff> backend module depends on L<Alien::OpenVcdiff> which configures, builds, and installs Google's L<open-vcdiff|http://code.google.com/p/open-vcdiff/> library.
+
+
+=head2 FUTURE BACKENDS
+
+Another possible candidate would be Kiem-Phong Vo's L<Vcodex|http://www2.research.att.com/~gsf/download/ref/vcodex/vcodex.html> library which contains a vcdiff implementation.
+
+A really cool project would be a pure-perl VCDIFF implementation that could be used in environments that are unable to compile XS modules.
+
+
+
+
+
+
+
 =head1 STREAMING API
 
 The streaming API is sometimes more convenient than the in-memory API. It can also be more efficient since it uses less memory. Also, you can start processing output before Vcdiff has finished.
@@ -137,7 +187,7 @@ In order to send output to a stream, a file handle should be passed in as the 3r
 
     Vcdiff::diff("hello", "hello world", \*STDOUT);
 
-In order to fully take advantage of streaming, the source and target parameters of C<diff> and the source and delta parameters of C<patch> can be file handles instead of strings:
+In order to fully take advantage of streaming, either or both of the source and target parameters can be file handles instead of strings. Here is the full-streaming mode where everything is a file:
 
     open(my $source_fh, '<', 'source.dat') || die $!;
     open(my $target_fh, '<', 'target.dat') || die $!;
@@ -146,6 +196,8 @@ In order to fully take advantage of streaming, the source and target parameters 
     Vcdiff::diff($source_fh, $target_fh, $delta_fh);
 
 Note that in all current backends the source file handle must be backed by an C<lseek(2)>able and/or C<mmap(2)>able file descriptor (in other words, a real file, not a pipe or socket). Vcdiff will throw an exception if the source file handle is unsuitable.
+
+
 
 
 
@@ -175,49 +227,6 @@ Here is an example using L<Sys::Mmap>:
 
 
 
-=head1 BACKENDS
-
-L<Vcdiff> doesn't itself implement delta compression. Instead, it provides a consistent interface to various open-source VCDIFF (RFC 3284) implementations. The implementation libraries it interfaces to are called "backends".
-
-In other words, L<Vcdiff> aims to be "the DBI" of VCDIFF implementations.
-
-The currently supported backends are described below. See the POD documentation in the backend module distributions for more details on the pros and cons of each backend.
-
-
-=head2 XDELTA3 BACKEND
-
-The L<Vcdiff::Xdelta3> backend module bundles Joshua MacDonald's L<Xdelta3|http://xdelta.org/> library.
-
-
-=head2 OPEN-VCDIFF BACKEND
-
-The L<Vcdiff::OpenVcdiff> backend module depends on L<Alien::OpenVcdiff> which configures, builds, and installs Google's L<open-vcdiff|http://code.google.com/p/open-vcdiff/> library.
-
-
-=head2 FUTURE BACKENDS
-
-Another possible candidate would be Kiem-Phong Vo's L<Vcodex|http://www2.research.att.com/~gsf/download/ref/vcodex/vcodex.html> library which contains a vcdiff implementation.
-
-A really cool project would be a pure-perl VCDIFF implementation that could be used in environments that are unable to compile XS modules.
-
-
-=head2 CHOOSING A BACKEND
-
-In order to choose which backend to use, L<Vcdiff> will first check to see if the C<$Vcdiff::backend> variable is populated. If so, it will attempt to load that backend. This variable can be used to force a particular backend:
-
-    {
-        local $Vcdiff::backend = 'Vcdiff::OpenVcdiff';
-        $delta = Vcdiff::diff($source, $target);
-    }
-
-Otherwise, L<Vcdiff> will check to see if any backends have been loaded already. If so, it will choose the first one it finds:
-
-    use Vcdiff::Xdelta3;
-    $delta = Vcdiff::diff($source, $target);
-
-If it doesn't find any loaded backends, it will try to load them in the following order: Xdelta3, OpenVcdiff. 
-
-Finally, if none of these backends can be loaded, an exception is thrown.
 
 
 
