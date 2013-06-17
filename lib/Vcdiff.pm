@@ -52,6 +52,11 @@ sub patch {
   }
 }
 
+sub which_backend {
+  load_backend();
+
+  return $backend;
+}
 
 sub load_backend {
   ## If a backend is set, make sure it is loaded:
