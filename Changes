@@ -1,2 +1,8 @@
+0.504   2013-06-18
+  * Improve test output
+  * VCDIFF cross-implementation format compatibility tests
+  * which_backend() feature
+  * Much improved docs
+
 0.100   2013-06-15
   * Initial release
