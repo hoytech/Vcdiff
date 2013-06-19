@@ -10,23 +10,19 @@ B<In order to use this module you must install one or more backend modules (see 
 
     my $delta = Vcdiff::diff($source, $target);
 
-    ## ... send the $delta string to someone who has $source ...
-
     my $target2 = Vcdiff::patch($source, $delta);
 
-    ## $target2 is the same as $target
+    ## $target2 eq $target
 
 
 
 =head1 DESCRIPTION
 
-Given source data and target data, the C<Vcdiff::diff> function computes a "delta" that encodes the information needed to turn source into target.
+Given source and target data, the C<Vcdiff::diff> function computes a "delta" that encodes the information needed to turn source into target. Anyone who has the source and delta can derive the target with the C<Vcdiff::patch> function.
 
-Anyone who has source and delta can compute target with the C<Vcdiff::patch> function.
+The point of this module is that if the source and target inputs are related then delta can be small relative to target, meaning it may be more efficient to send delta updates to clients over the network instead of re-sending the whole target every time.
 
-If the source and target inputs are related then delta can be very small relative to target, meaning it may be more efficient to send the delta string instead of the whole target.
-
-Even though source and target don't necessarily have to be binary data (regular data is fine too), the delta will always contain binary data including NUL bytes so if your transport protocols don't support this you will have to encode or escape it in some way (ie Base64). Compressing the delta before you do this might be worthwhile depending on the size of your changes and the entropy of your data.
+Even though source and target don't necessarily have to be binary data (regular data is fine too), the delta will contain binary data including NUL bytes so if your transport protocols don't support this you will have to encode or escape it in some way (ie Base64). Compressing the delta before you do this might be worthwhile depending on the size of your changes and the entropy of your data.
 
 The delta format is described by L<RFC 3284|http://www.faqs.org/rfcs/rfc3284.html>, "The VCDIFF Generic Differencing and Compression Data Format".
 
@@ -35,7 +31,7 @@ The delta format is described by L<RFC 3284|http://www.faqs.org/rfcs/rfc3284.htm
 
 =head1 BACKENDS
 
-L<Vcdiff> aims to be "the DBI" of VCDIFF implementations.
+L<Vcdiff> is "the DBI" of VCDIFF implementations.
 
 L<Vcdiff> doesn't itself implement delta compression. Instead, it provides a consistent interface to various open-source VCDIFF (RFC 3284) implementations. The implementation libraries it interfaces to are called "backends". You must install at least one backend in order to use L<Vcdiff>.
 
@@ -48,14 +44,17 @@ In order to choose which backend to use, L<Vcdiff> will first check to see if th
         $delta = Vcdiff::diff($source, $target);
     }
 
-Otherwise, L<Vcdiff> will check to see if any backends have been loaded already. If so, it will choose the first one it finds:
+Otherwise, L<Vcdiff> will check to see if any backends have been loaded already in the following order: B<Xdelta3, OpenVcdiff>. If so, it will choose the first one it finds:
 
     use Vcdiff::Xdelta3;
     $delta = Vcdiff::diff($source, $target);
 
-If it doesn't find any loaded backends, it will try to load them in the following order: Xdelta3, OpenVcdiff. 
+If it doesn't find any loaded backends, it will try to load them in the same order as above.
 
-Finally, if none of these backends can be loaded, an exception is thrown.
+Finally, if no backends can be loaded, an exception is thrown.
+
+The backend that will be used can be determined with C<Vcdiff::which_backend()>.
+
 
 
 =head2 Dependency Recommendations
@@ -70,7 +69,7 @@ Instead of:
     use Vcdiff::Xdelta3;
     print Vcdiff::Xdelta3::diff("hello", "hello world");
 
-That way the selection of which backend to use is as flexible as possible.
+That way the selection of which backend to use is as dynamic as possible.
 
 If you're writing a module that depends on L<Vcdiff>, pick a backend and add that backend's package (ie C<Vcdiff::Xdelta3>) to your module's dependency list. This way a (sophisticated) user can force a different backend at install-time if the one you chose doesn't work for whatever reason.
 
@@ -90,11 +89,11 @@ The L<Vcdiff::OpenVcdiff> backend module depends on L<Alien::OpenVcdiff> which c
 
 =head2 Future Backends
 
-Another possible candidate would be Kiem-Phong Vo's L<Vcodex|http://www2.research.att.com/~gsf/download/ref/vcodex/vcodex.html> library which contains a vcdiff implementation.
+Another possible candidate would be Kiem-Phong Vo's L<Vcodex|http://www2.research.att.com/~gsf/download/ref/vcodex/vcodex.html> utility which contains a vcdiff implementation.
 
 A really cool project would be a pure-perl VCDIFF implementation that could be used in environments that are unable to compile XS modules.
 
-In the future I plan to build a L<Vcdiff::DumbDiffer> module (name undecided) that will completely ignore the source and create a delta that embeds the entire target. Obviously this defeats the purpose of delta compression but will allow deltas to be generated really fast. This will be useful because protocols that frequently replace the entire content won't need special cases.
+In the future I plan to build a L<Vcdiff::DumbDiffer> module (name undecided) that will completely ignore the source and create a delta that embeds the entire target. Obviously this defeats the purpose of delta compression but will allow deltas to be generated really fast. This will be useful because protocols that frequently replace the entire content won't need a special case for this.
 
 
 
@@ -112,7 +111,7 @@ In order to send output to a stream, a file handle should be passed in as the 3r
 
     Vcdiff::diff("hello", "hello world", \*STDOUT);
 
-In order to fully take advantage of streaming, either or both of the source and target parameters can be file handles instead of strings. Here is the full-streaming mode where everything is a file:
+In order to fully take advantage of streaming, either or both of the source and target parameters can also be file handles instead of strings. Here is the full-streaming mode where all parameters are file handles:
 
     open(my $source_fh, '<', 'source.dat') || die $!;
     open(my $target_fh, '<', 'target.dat') || die $!;
@@ -120,7 +119,7 @@ In order to fully take advantage of streaming, either or both of the source and 
 
     Vcdiff::diff($source_fh, $target_fh, $delta_fh);
 
-Note that in all current backends the source file handle must be backed by an C<lseek(2)>able and/or C<mmap(2)>able file descriptor (in other words, a real file, not a pipe or socket). Vcdiff will throw an exception if the source file handle is unsuitable.
+Note that in all current backends if the source parameter is a file handle it must be backed by an C<lseek(2)>able and/or C<mmap(2)>able file descriptor (in other words, a real file, not a pipe or socket). Vcdiff will throw an exception if the source file handle is unsuitable.
 
 
 
@@ -147,10 +146,10 @@ Here is an example using L<Sys::Mmap>:
 
     Vcdiff::diff($source_str, $target_str, $delta_fh);
 
-    munmap($source_str); ## resource leak if diff() throws exception
-    munmap($target_str); ## ditto
+    munmap($source_str);
+    munmap($target_str);
 
-Note that the L<Vcdiff::OpenVcdiff> module does this under the hood if source is a file handle.
+Note that the L<Vcdiff::OpenVcdiff> module does this under the hood for source if it is a file handle.
 
 
 
@@ -194,13 +193,6 @@ Note that currently no backend-specific extensions like checksums or interleavin
 
 This test isn't run by default because it needs to have all backends installed.
 
-
-
-=head1 BENCHMARKING
-
-=head2 Compression
-
-=head2 Performance
 
 
 
