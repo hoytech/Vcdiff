@@ -279,13 +279,11 @@ The S/M indicators show which API combination is being used in the order of sour
 
 =head2 extra-tests/cross-compat.t
 
-Since the VCDIFF standard defines a data format, even though implementations may use very different encoding algorithms, they should still be compatible.
-
 The point of this test is to verify that the deltas produced by each backend are compatible will all other backends. For each combination of backend, all the L<streaming()> tests above are run.
 
-Note that currently no backend-specific extensions like checksums or interleaving are enabled.
+Since the VCDIFF standard defines a data format, even though backends may use very different encoding algorithms their outputs should still be compatible. By default L<Vcdiff> tries to be RFC 3284 compatible so no backend-specific extensions like checksums or interleaving are enabled.
 
-This test isn't run by default because it needs to have all backends installed.
+This test has to be run manually because it needs to have all C<@Vcdiff::known_backends> installed.
 
 
 
