@@ -5,7 +5,7 @@ use strict;
 use Symbol;
 use Carp;
 
-our $VERSION = '0.504';
+our $VERSION = '0.505';
 
 
 ## This variable indicates which backend should be used. It should
