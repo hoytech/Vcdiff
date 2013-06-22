@@ -55,6 +55,7 @@ sub verify {
     $target = tempfile();
     $target->autoflush(1);
     print $target $$target_arg;
+    seek $target, 0, 0;
   } else {
     $target = $target_arg;
   }
@@ -72,12 +73,15 @@ sub verify {
       Vcdiff::diff($source, $target, $delta);
     }
 
+    seek $delta, 0, 0;
+
     {
       local $Vcdiff::backend = $patcher_backend_to_use;
       Vcdiff::patch($source, $delta, $target2_fh);
     }
 
     seek $target2_fh, 0, 0;
+
     {
       local $/;
       $target2 = <$target2_fh>;
