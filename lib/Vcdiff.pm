@@ -23,16 +23,6 @@ our @known_backends = qw(
 );
 
 
-## These packages should be skipped when looking for a backend
-## because they are internal to this distribution and share the
-## Vcdiff namespace. In hindsight it might have been a good idea
-## to give the backends their own namespace such as Vcdiff::Backend.
-
-my @internal_packages = qw (
-  Test
-);
-
-
 
 sub diff {
   _load_backend();
@@ -59,7 +49,8 @@ sub which_backend {
 }
 
 sub _load_backend {
-  ## If a backend is set, make sure it is loaded:
+
+  ## If a backend is set, make sure it's loaded or die trying:
 
   if (defined $backend) {
     eval "require $backend";
@@ -69,11 +60,13 @@ sub _load_backend {
 
   ## If a backend has already been loaded but not set, set it:
 
-  foreach my $k (keys %INC) {
-    if ($k =~ m{^Vcdiff/([^.]+)}) {
-      my $pm = $1;
-      next if grep { $pm eq $_ } @internal_packages;
-      $backend = "Vcdiff::$pm";
+  foreach my $backend_candidate (@known_backends) {
+    no strict "refs";
+    my $ver = ${qualify("VERSION", $backend_candidate)};
+    if (${ qualify("VERSION", $backend_candidate) }) {
+      eval "require $backend_candidate";
+      next if $@;
+      $backend = $backend_candidate;
       return;
     }
   }
