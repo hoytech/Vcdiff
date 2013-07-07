@@ -44,12 +44,14 @@ In order to choose which backend to use, L<Vcdiff> will first check to see if th
         $delta = Vcdiff::diff($source, $target);
     }
 
-Otherwise, it will check to see if any backends have been loaded already in the following order: B<Xdelta3, OpenVcdiff>. If so, it will choose the first one it finds:
+The above will croak if L<Vcdiff::OpenVcdiff> can't be loaded.
+
+In the normal case, L<Vcdiff> will check to see if any backends have been loaded already in the following order: B<Xdelta3, OpenVcdiff> (which can be modified via the C<@Vcdiff::known_backends> variable):
 
     use Vcdiff::Xdelta3;
     $delta = Vcdiff::diff($source, $target);
 
-If it doesn't find any loaded backends, it will try to load them in the same order as above.
+If it doesn't find any loaded backends, it will try to load them in the same order.
 
 Finally, if no backends can be loaded, an exception is thrown.
 
