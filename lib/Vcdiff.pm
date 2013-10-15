@@ -197,7 +197,7 @@ Even more importantly, writing backend-agnostic code allows users of your module
 
 =head1 STREAMING API
 
-The streaming API is sometimes more convenient than the in-memory API. It can also be more efficient since it uses less memory. Also, you can start processing output before Vcdiff has finished.
+The streaming API is sometimes more convenient than the in-memory API. It can also be more efficient since it uses less memory and because you can start processing output before Vcdiff has finished.
 
 Sometimes you have to use the streaming API in order to handle files that are too large to fit into your virtual address space (though note some backends have size limitations apart from this).
 
@@ -225,7 +225,7 @@ If the source and/or target/delta are in files, an alternative to the streaming 
 
 Doing so is more efficient than the streaming API for large files because fewer system calls are made and a kernel-space to user-space copy is avoided. However, as mentioned above, files that are too large to fit in your virtual address space must be diffed with the streaming API (this will only come up when working with multi-gigabyte files on 32 bit systems).
 
-Here is an example using L<Sys::Mmap> (doesn't handle resource leaks in the case of exceptions):
+Here is an example using L<Sys::Mmap> (this example doesn't handle resource leaks in the case of exceptions):
 
     use Sys::Mmap;
 
@@ -243,7 +243,7 @@ Here is an example using L<Sys::Mmap> (doesn't handle resource leaks in the case
     munmap($source_str);
     munmap($target_str);
 
-Note that under the hood the L<Vcdiff::OpenVcdiff> backend uses L<Sys::Mmap> for source file handles.
+Note that this is essentially what the L<Vcdiff::OpenVcdiff> backend does for source file handles.
 
 
 
@@ -266,7 +266,7 @@ The tests currently verify a few basic cases up to a megabyte or so in length. I
 
 =head2 Vcdiff::Test::streaming()
 
-The L<Vcdiff::Test::streaming()> test is somewhat mis-named. It loops through all test-cases described above and for each of them it tests every streaming/in-memory API combination. You will see this in the test output like so:
+The C<Vcdiff::Test::streaming()> test is somewhat mis-named. It loops through all test-cases described above and for each of them it tests every streaming/in-memory API combination. You will see this in the test output like so:
 
     ok 1 - [SSM]
     ok 2 - [MSM]
@@ -281,9 +281,9 @@ The S/M indicators show which API combination is being used in the order of sour
 
 =head2 extra-tests/cross-compat.t
 
-The point of this test is to verify that the deltas produced by each backend are compatible will all other backends. For each combination of backend, all the L<streaming()> tests above are run.
+The point of this test is to verify that the deltas produced by each backend are compatible will all other backends. For each combination of backend, all the C<streaming()> tests above are run.
 
-Since the VCDIFF standard defines a data format, even though backends may use very different encoding algorithms their outputs should still be compatible. By default L<Vcdiff> tries to be RFC 3284 compatible so no backend-specific extensions like checksums or interleaving are enabled.
+Since the VCDIFF standard defines a data format, even though backends may use very different encoding algorithms their outputs should still be compatible. By default L<Vcdiff> tries to create RFC 3284 compatible output so no backend-specific extensions like checksums or interleaving are enabled.
 
 This test has to be run manually because it needs to have all C<@Vcdiff::known_backends> installed.
 
